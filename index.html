@@ -177,27 +177,29 @@
                     <strong>Puntuación total:</strong> <span id="puntuacionTotal">0.0</span>/100
                     <span id="nivelDesempeno" class="pill insuficiente" aria-live="polite">Sin evaluar</span>
                 </div>
-                        <div class="btns">
+                <div class="btns">
                     <button type="button" class="btn-secondary" id="btnReiniciar">Reiniciar</button>
                     <button type="button" class="btn-secondary" id="btnGuardarJson">Guardar evaluación (JSON)</button>
                     <button type="button" class="btn-primary" id="btnImprimir">Imprimir / Guardar PDF</button>
-                            <button type="button" class="btn-primary" id="btnEnviarSheet" title="Enviar registro a Google Sheets">Enviar a Google Sheets</button>
+                    <button type="button" class="btn-primary" id="btnEnviarSheet" title="Enviar registro a Google Sheets">Enviar a Google Sheets</button>
                 </div>
             </section>
         </form>
 
-                <p id="statusMsg" class="footer" aria-live="polite"></p>
-                <p class="footer">Tip: el nombre del tutor evaluador se recuerda en este navegador para facilitar futuras evaluaciones.</p>
+        <p id="statusMsg" class="footer" aria-live="polite"></p>
+        <p class="footer">Tip: el nombre del tutor evaluador se recuerda en este navegador para facilitar futuras evaluaciones.</p>
     </div>
 
-        <!-- Librería para generar PDF en el navegador -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+    <!-- Librería para generar PDF en el navegador -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
 
-        <script>
-                // ————— Integración con Google Apps Script / Google Sheets —————
-                const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz1vmXlCqKx3aqUjRMkpN1a3--mvzGb-Ode0DOInItYKzc8BIJek3Vy4y84GkETepk7Hg/exec';
-                const SHEET_NAME = 'Evaluacion Practica';
-                const DRIVE_FOLDER_ID = '108_uU-LrlZdrNcBGZ4GKUsk1Nzjt7_Sj';
+    <script>
+        // ————— Integración con Google Apps Script / Google Sheets —————
+        // CORRECCIÓN 1: URL actualizada del Web App
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwlIjsIOUuS4qrLzKva-VoywVAkFfy_kBjT8uMHSu-ZAN3BOf9l5ErXKGhTT8_JA9Vm/exec';
+        const SHEET_NAME = 'Evaluacion Practica';
+        // CORRECCIÓN 2: Se añadió el ID de la carpeta de Drive. ¡Cámbialo por el tuyo si es diferente!
+        const DRIVE_FOLDER_ID = '108_uU-LrlZdrNcBGZ4GKUsk1Nzjt7_Sj';
 
         // Evitar caché del endpoint (y de proxies intermedios)
         function getEndpoint() {
@@ -390,7 +392,7 @@
             const actividad = actividadInput.value;
 
             const resultados = [];
-                const criteriosLineales = [];
+            const criteriosLineales = [];
             rubricaConfig.dominios.forEach((dom) => {
                 let domTotal = 0;
                 const criterios = dom.criterios.map((crit) => {
@@ -400,8 +402,8 @@
                     const puntaje = +(crit.peso * factor).toFixed(2);
                     domTotal += puntaje;
                     const obs = document.getElementById(`obs_${dom.id}_${crit.id}`)?.value || '';
-                        criteriosLineales.push(puntaje);
-                        return { id: crit.id, criterio: crit.texto, nivel, puntaje, peso: crit.peso, observaciones: obs };
+                    criteriosLineales.push(puntaje);
+                    return { id: crit.id, criterio: crit.texto, nivel, puntaje, peso: crit.peso, observaciones: obs };
                 });
                 resultados.push({ dominio: dom.nombre, peso: dom.peso, puntaje: +domTotal.toFixed(2), criterios });
             });
@@ -422,169 +424,177 @@
                 tutor: tutor || 'N/D',
                 total: +total.toFixed(2),
                 nivel: nivel.rotulo,
-                        resultados,
-                        criteriosLineales,
-                        resumen: { fortalezas, areas_mejora: areas },
+                resultados,
+                criteriosLineales,
+                resumen: { fortalezas, areas_mejora: areas },
             };
         }
 
-                // Construye el payload compatible con columnas A:V
-                function construirPayloadSheet() {
-                    const out = construirSalida();
-                    // A: Timestamp (ISO local)
-                    const tzOffsetMS = (new Date()).getTimezoneOffset() * 60000;
-                    const timestamp = (new Date(Date.now() - tzOffsetMS)).toISOString().replace('T',' ').slice(0,19);
+        // Construye el payload compatible con columnas A:V
+        function construirPayloadSheet() {
+            const out = construirSalida();
+            // A: Timestamp (ISO local)
+            const tzOffsetMS = (new Date()).getTimezoneOffset() * 60000;
+            const timestamp = (new Date(Date.now() - tzOffsetMS)).toISOString().replace('T',' ').slice(0,19);
 
-                    // F-S: hasta 14 columnas de criterios; si hay menos, se rellena con vacío
-                    const maxCols = 14; // F..S
-                    const arr = [...out.criteriosLineales];
-                    while (arr.length < maxCols) arr.push('');
-                    const [c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14] = arr;
+            // F-S: hasta 14 columnas de criterios; si hay menos, se rellena con vacío
+            const maxCols = 14; // F..S
+            const arr = [...out.criteriosLineales];
+            while (arr.length < maxCols) arr.push('');
+            const [c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14] = arr;
 
-                    // V: Observaciones — concatenar las observaciones no vacías
-                    const obs = out.resultados.flatMap(d => d.criterios)
-                                            .filter(c => (c.observaciones || '').trim().length > 0)
-                                            .map(c => `• ${c.criterio}: ${c.observaciones.trim()}`)
-                                            .join('\n');
+            // V: Observaciones — concatenar las observaciones no vacías
+            const obs = out.resultados.flatMap(d => d.criterios)
+                                    .filter(c => (c.observaciones || '').trim().length > 0)
+                                    .map(c => `• ${c.criterio}: ${c.observaciones.trim()}`)
+                                    .join('\n');
 
-                    // Objeto de envío; incluir también sheetName para seleccionar pestaña
-                    const payload = {
-                        sheetName: SHEET_NAME,
-                        // Campos base
-                        timestamp,
-                        nombre_residente: out.residente,
-                        tutor_evaluador: out.tutor,
-                        fecha_evaluacion: out.fecha,
-                        actividad_evaluada: out.actividad,
-                        // Criterios (F-S)
-                        c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,
-                        // Totales y nivel (T-U)
-                        puntuacion_total: out.total,
-                        nivel_desempeno: out.nivel,
-                        // Observaciones (V)
-                        observaciones: obs,
-                        // Información adicional (opcional)
-                        criterios_headers: rubricaConfig.dominios.flatMap(d => d.criterios.map(c=>c.id)),
-                    };
-                    return payload;
+            // Objeto de envío; incluir también sheetName para seleccionar pestaña
+            const payload = {
+                sheetName: SHEET_NAME,
+                // Campos base
+                timestamp,
+                nombre_residente: out.residente,
+                tutor_evaluador: out.tutor,
+                fecha_evaluacion: out.fecha,
+                actividad_evaluada: out.actividad,
+                // Criterios (F-S)
+                c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,
+                // Totales y nivel (T-U)
+                puntuacion_total: out.total,
+                nivel_desempeno: out.nivel,
+                // Observaciones (V)
+                observaciones: obs,
+                // Información adicional (opcional)
+                criterios_headers: rubricaConfig.dominios.flatMap(d => d.criterios.map(c=>c.id)),
+            };
+            return payload;
+        }
+
+        // Fallback universal que evita CORS: envía via formulario oculto (x-www-form-urlencoded)
+        function postViaForm(url, payloadObj) {
+            return new Promise((resolve) => {
+                const iframeName = 'gs_iframe_' + Date.now();
+                const iframe = document.createElement('iframe');
+                iframe.name = iframeName;
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = url;
+                form.target = iframeName;
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'payload';
+                input.value = JSON.stringify(payloadObj);
+                form.appendChild(input);
+
+                document.body.appendChild(form);
+
+                const cleanup = () => { setTimeout(() => { try { form.remove(); iframe.remove(); } catch(_){} resolve(); }, 50); };
+                iframe.addEventListener('load', cleanup, { once: true });
+                form.submit();
+                // Safety timeout en caso de que el navegador no dispare load
+                setTimeout(cleanup, 3500);
+            });
+        }
+
+        async function enviarAGoogleSheet() {
+            const btn = document.getElementById('btnEnviarSheet');
+            const payload = construirPayloadSheet();
+            statusMsg.textContent = 'Enviando a Google Sheets…';
+            btn.disabled = true;
+            try {
+                const res = await fetch(getEndpoint(), {
+                    method: 'POST',
+                    // text/plain evita preflight y no-cors evita bloqueo de lectura por CORS (opaque response)
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload),
+                });
+                // En modo no-cors no podemos leer la respuesta; asumimos entrega OK
+                statusMsg.textContent = 'Registro enviado (respuesta no legible por CORS). Verifica en la hoja.';
+            } catch (err) {
+                console.error(err);
+                // Fallback sin CORS
+                try {
+                    await postViaForm(getEndpoint(), payload);
+                    statusMsg.textContent = 'Registro enviado mediante fallback (form). Verifica en la hoja.';
+                } catch (err2) {
+                    console.error(err2);
+                    statusMsg.textContent = 'No se pudo enviar a Google Sheets. Revisa la publicación del Web App (CORS/permiso).';
                 }
+            } finally {
+                btn.disabled = false;
+                saveTutor();
+            }
+        }
 
-                    // Fallback universal que evita CORS: envía via formulario oculto (x-www-form-urlencoded)
-                    function postViaForm(url, payloadObj) {
-                        return new Promise((resolve) => {
-                            const iframeName = 'gs_iframe_' + Date.now();
-                            const iframe = document.createElement('iframe');
-                            iframe.name = iframeName;
-                            iframe.style.display = 'none';
-                            document.body.appendChild(iframe);
+        // CORRECCIÓN 3: Función `generarYSubirPDF` completa y corregida
+        async function generarYSubirPDF() {
+            const btn = document.getElementById('btnPdfDrive');
+            btn.disabled = true;
+            statusMsg.textContent = 'Generando PDF…';
 
-                            const form = document.createElement('form');
-                            form.method = 'POST';
-                            form.action = url;
-                            form.target = iframeName;
+            const out = construirSalida();
+            const safeName = (out.residente || 'Residente').replace(/[^A-Za-z0-9_\- ]/g,'_');
+            const fecha = document.getElementById('fechaEvaluacion').value || 'fecha';
+            const fileName = `Informe_Evaluacion_Practica_${safeName}_${fecha}.pdf`;
 
-                            const input = document.createElement('input');
-                            input.type = 'hidden';
-                            input.name = 'payload';
-                            input.value = JSON.stringify(payloadObj);
-                            form.appendChild(input);
+            const element = document.querySelector('.container');
+            const opt = {
+                margin:       [10,10,10,10],
+                filename:     fileName,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
 
-                            document.body.appendChild(form);
+            // Se declara 'payload' fuera del 'try' para que esté disponible en el 'catch'
+            let payload;
 
-                            const cleanup = () => { setTimeout(() => { try { form.remove(); iframe.remove(); } catch(_){} resolve(); }, 50); };
-                            iframe.addEventListener('load', cleanup, { once: true });
-                            form.submit();
-                            // Safety timeout en caso de que el navegador no dispare load
-                            setTimeout(cleanup, 3500);
-                        });
+            try {
+                // Generar data URI del PDF
+                const dataUri = await html2pdf().set(opt).from(element).toPdf().output('datauristring');
+                const base64 = dataUri.split(',')[1];
+                statusMsg.textContent = 'Subiendo PDF a Google Drive…';
+
+                // Reusar payload para hoja + adjuntar PDF
+                payload = construirPayloadSheet(); // Asignar valor a la variable
+                payload.pdf_base64 = base64;
+                payload.pdf_filename = fileName;
+                payload.folder_id = DRIVE_FOLDER_ID;
+
+                const res = await fetch(getEndpoint(), {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload),
+                });
+                statusMsg.textContent = 'PDF enviado a Drive y registro solicitado. Verifica en Drive y la hoja.';
+            } catch (err) {
+                console.error("Error en el intento principal de subir PDF:", err);
+                statusMsg.textContent = 'El intento principal falló. Probando con método alternativo...';
+                // Fallback sin CORS
+                try {
+                    // Ahora 'payload' está definido aquí si el error ocurrió después de su creación
+                    if (!payload) {
+                         payload = construirPayloadSheet(); // Asegurarse de que exista si el error fue antes
+                         // Nota: El PDF no se adjuntará en este caso de fallback si html2pdf falló
                     }
-
-                    async function enviarAGoogleSheet() {
-                    const btn = document.getElementById('btnEnviarSheet');
-                    const payload = construirPayloadSheet();
-                    statusMsg.textContent = 'Enviando a Google Sheets…';
-                    btn.disabled = true;
-                    try {
-                                const res = await fetch(getEndpoint(), {
-                            method: 'POST',
-                                    // text/plain evita preflight y no-cors evita bloqueo de lectura por CORS (opaque response)
-                                    mode: 'no-cors',
-                                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                                    body: JSON.stringify(payload),
-                        });
-                                // En modo no-cors no podemos leer la respuesta; asumimos entrega OK
-                                statusMsg.textContent = 'Registro enviado (respuesta no legible por CORS). Verifica en la hoja.';
-                    } catch (err) {
-                        console.error(err);
-                        // Fallback sin CORS
-                        try {
-                            await postViaForm(getEndpoint(), payload);
-                            statusMsg.textContent = 'Registro enviado mediante fallback (form). Verifica en la hoja.';
-                        } catch (err2) {
-                            console.error(err2);
-                            statusMsg.textContent = 'No se pudo enviar a Google Sheets. Revisa la publicación del Web App (CORS/permiso).';
-                        }
-                    } finally {
-                        btn.disabled = false;
-                        saveTutor();
-                    }
+                    await postViaForm(getEndpoint(), payload);
+                    statusMsg.textContent = 'PDF enviado mediante fallback (form). Verifica en Drive y en la hoja.';
+                } catch (err2) {
+                    console.error("Error en el fallback de subir PDF:", err2);
+                    statusMsg.textContent = 'Error generando o subiendo el PDF. Revisa la consola.';
                 }
-
-                    // Generar PDF del contenido visible y subir a Drive vía Apps Script
-                    async function generarYSubirPDF() {
-                        const btn = document.getElementById('btnPdfDrive');
-                        btn.disabled = true;
-                        statusMsg.textContent = 'Generando PDF…';
-
-                        const out = construirSalida();
-                        const safeName = (out.residente || 'Residente').replace(/[^A-Za-z0-9_\- ]/g,'_');
-                        const fecha = document.getElementById('fechaEvaluacion').value || 'fecha';
-                        const fileName = `Informe_Evaluacion_Practica_${safeName}_${fecha}.pdf`;
-
-                        const element = document.querySelector('.container');
-                        const opt = {
-                            margin:       [10,10,10,10],
-                            filename:     fileName,
-                            image:        { type: 'jpeg', quality: 0.98 },
-                            html2canvas:  { scale: 2, useCORS: true },
-                            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                        };
-
-                        try {
-                            // Generar data URI del PDF
-                            const dataUri = await html2pdf().set(opt).from(element).toPdf().output('datauristring');
-                            const base64 = dataUri.split(',')[1]; // quitar prefijo data:application/pdf;...
-                            statusMsg.textContent = 'Subiendo PDF a Google Drive…';
-
-                            // Reusar payload para hoja + adjuntar PDF
-                            const payload = construirPayloadSheet();
-                            payload.pdf_base64 = base64;
-                            payload.pdf_filename = fileName;
-                            payload.folder_id = DRIVE_FOLDER_ID;
-
-                                    const res = await fetch(getEndpoint(), {
-                                method: 'POST',
-                                        mode: 'no-cors',
-                                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                                        body: JSON.stringify(payload),
-                            });
-                                    // En no-cors no se puede leer la respuesta; indicamos mensaje genérico
-                                    statusMsg.textContent = 'PDF enviado a Drive y registro solicitado (no se puede leer respuesta por CORS). Verifica en Drive y la hoja.';
-                        } catch (err) {
-                            console.error(err);
-                            // Fallback sin CORS
-                            try {
-                                await postViaForm(getEndpoint(), payload);
-                                statusMsg.textContent = 'PDF enviado mediante fallback (form). Verifica en Drive y en la hoja.';
-                            } catch (err2) {
-                                console.error(err2);
-                                statusMsg.textContent = 'Error generando o subiendo el PDF.';
-                            }
-                        } finally {
-                            btn.disabled = false;
-                            saveTutor();
-                        }
-                    }
+            } finally {
+                btn.disabled = false;
+                saveTutor();
+            }
+        }
 
         function descargarJSON(data, filename) {
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -609,7 +619,7 @@
             descargarJSON(out, `Evaluacion_Practica_${safeName}_${fecha}.json`);
             saveTutor();
         });
-            document.getElementById('btnReiniciar').addEventListener('click', () => {
+        document.getElementById('btnReiniciar').addEventListener('click', () => {
             if (confirm('¿Limpiar selección y observaciones?')) {
                 form.reset();
                 setToday();
@@ -617,18 +627,20 @@
                 loadTutor();
             }
         });
-            document.getElementById('btnEnviarSheet').addEventListener('click', enviarAGoogleSheet);
-            // Crear botón si no existe en el DOM (por compatibilidad de patches)
-            (function ensurePdfBtn(){
-                if (!document.getElementById('btnPdfDrive')) {
-                    const btns = document.querySelector('.btns');
-                    const b = document.createElement('button');
-                    b.type = 'button'; b.id = 'btnPdfDrive'; b.className = 'btn-primary';
-                    b.textContent = 'Generar PDF y subir a Drive';
-                    btns.appendChild(b);
-                }
-                document.getElementById('btnPdfDrive').addEventListener('click', generarYSubirPDF);
-            })();
+        document.getElementById('btnEnviarSheet').addEventListener('click', enviarAGoogleSheet);
+        
+        // Crear botón para subir PDF a Drive si no existe en el DOM
+        (function ensurePdfBtn(){
+            if (!document.getElementById('btnPdfDrive')) {
+                const btns = document.querySelector('.btns');
+                const b = document.createElement('button');
+                b.type = 'button'; b.id = 'btnPdfDrive'; b.className = 'btn-primary';
+                b.textContent = 'Generar PDF y subir a Drive';
+                b.title = 'Genera un PDF y lo envía a la carpeta de Drive designada';
+                btns.appendChild(b);
+            }
+            document.getElementById('btnPdfDrive').addEventListener('click', generarYSubirPDF);
+        })();
 
         // Inicialización
         (function init(){
