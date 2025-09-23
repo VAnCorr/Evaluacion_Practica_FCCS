@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Rúbrica - Evaluación Práctica (Paciente Grave)</title>
     <style>
         :root {
@@ -195,6 +198,12 @@
                 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz1vmXlCqKx3aqUjRMkpN1a3--mvzGb-Ode0DOInItYKzc8BIJek3Vy4y84GkETepk7Hg/exec';
                 const SHEET_NAME = 'Evaluacion Practica';
                 const DRIVE_FOLDER_ID = '108_uU-LrlZdrNcBGZ4GKUsk1Nzjt7_Sj';
+
+        // Evitar caché del endpoint (y de proxies intermedios)
+        function getEndpoint() {
+            const sep = APPS_SCRIPT_URL.includes('?') ? '&' : '?';
+            return APPS_SCRIPT_URL + sep + 'v=' + Date.now();
+        }
 
         // Configuración de niveles y factores de puntuación
         const NIVELES = [
@@ -460,13 +469,43 @@
                     return payload;
                 }
 
+                    // Fallback universal que evita CORS: envía via formulario oculto (x-www-form-urlencoded)
+                    function postViaForm(url, payloadObj) {
+                        return new Promise((resolve) => {
+                            const iframeName = 'gs_iframe_' + Date.now();
+                            const iframe = document.createElement('iframe');
+                            iframe.name = iframeName;
+                            iframe.style.display = 'none';
+                            document.body.appendChild(iframe);
+
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = url;
+                            form.target = iframeName;
+
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'payload';
+                            input.value = JSON.stringify(payloadObj);
+                            form.appendChild(input);
+
+                            document.body.appendChild(form);
+
+                            const cleanup = () => { setTimeout(() => { try { form.remove(); iframe.remove(); } catch(_){} resolve(); }, 50); };
+                            iframe.addEventListener('load', cleanup, { once: true });
+                            form.submit();
+                            // Safety timeout en caso de que el navegador no dispare load
+                            setTimeout(cleanup, 3500);
+                        });
+                    }
+
                     async function enviarAGoogleSheet() {
                     const btn = document.getElementById('btnEnviarSheet');
                     const payload = construirPayloadSheet();
                     statusMsg.textContent = 'Enviando a Google Sheets…';
                     btn.disabled = true;
                     try {
-                                const res = await fetch(APPS_SCRIPT_URL, {
+                                const res = await fetch(getEndpoint(), {
                             method: 'POST',
                                     // text/plain evita preflight y no-cors evita bloqueo de lectura por CORS (opaque response)
                                     mode: 'no-cors',
@@ -477,7 +516,14 @@
                                 statusMsg.textContent = 'Registro enviado (respuesta no legible por CORS). Verifica en la hoja.';
                     } catch (err) {
                         console.error(err);
-                        statusMsg.textContent = 'No se pudo enviar a Google Sheets. Revisa la publicación del Web App (CORS/permiso).';
+                        // Fallback sin CORS
+                        try {
+                            await postViaForm(getEndpoint(), payload);
+                            statusMsg.textContent = 'Registro enviado mediante fallback (form). Verifica en la hoja.';
+                        } catch (err2) {
+                            console.error(err2);
+                            statusMsg.textContent = 'No se pudo enviar a Google Sheets. Revisa la publicación del Web App (CORS/permiso).';
+                        }
                     } finally {
                         btn.disabled = false;
                         saveTutor();
@@ -516,7 +562,7 @@
                             payload.pdf_filename = fileName;
                             payload.folder_id = DRIVE_FOLDER_ID;
 
-                                    const res = await fetch(APPS_SCRIPT_URL, {
+                                    const res = await fetch(getEndpoint(), {
                                 method: 'POST',
                                         mode: 'no-cors',
                                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -526,7 +572,14 @@
                                     statusMsg.textContent = 'PDF enviado a Drive y registro solicitado (no se puede leer respuesta por CORS). Verifica en Drive y la hoja.';
                         } catch (err) {
                             console.error(err);
-                            statusMsg.textContent = 'Error generando o subiendo el PDF.';
+                            // Fallback sin CORS
+                            try {
+                                await postViaForm(getEndpoint(), payload);
+                                statusMsg.textContent = 'PDF enviado mediante fallback (form). Verifica en Drive y en la hoja.';
+                            } catch (err2) {
+                                console.error(err2);
+                                statusMsg.textContent = 'Error generando o subiendo el PDF.';
+                            }
                         } finally {
                             btn.disabled = false;
                             saveTutor();
