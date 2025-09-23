@@ -466,20 +466,15 @@
                     statusMsg.textContent = 'Enviando a Google Sheets…';
                     btn.disabled = true;
                     try {
-                        const res = await fetch(APPS_SCRIPT_URL, {
+                                const res = await fetch(APPS_SCRIPT_URL, {
                             method: 'POST',
-                                // text/plain evita preflight CORS en Apps Script
-                                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                                body: JSON.stringify(payload),
+                                    // text/plain evita preflight y no-cors evita bloqueo de lectura por CORS (opaque response)
+                                    mode: 'no-cors',
+                                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                    body: JSON.stringify(payload),
                         });
-                        // Si el Apps Script no permite CORS, esto podría fallar; en ese caso usar no-cors o confiar en el envío.
-                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                        let msg = 'Registro enviado correctamente.';
-                        try {
-                            const data = await res.json();
-                            if (data && data.result) msg = `Registro enviado: ${data.result}`;
-                        } catch (_) { /* ignora si no es JSON */ }
-                        statusMsg.textContent = msg;
+                                // En modo no-cors no podemos leer la respuesta; asumimos entrega OK
+                                statusMsg.textContent = 'Registro enviado (respuesta no legible por CORS). Verifica en la hoja.';
                     } catch (err) {
                         console.error(err);
                         statusMsg.textContent = 'No se pudo enviar a Google Sheets. Revisa la publicación del Web App (CORS/permiso).';
@@ -521,20 +516,14 @@
                             payload.pdf_filename = fileName;
                             payload.folder_id = DRIVE_FOLDER_ID;
 
-                            const res = await fetch(APPS_SCRIPT_URL, {
+                                    const res = await fetch(APPS_SCRIPT_URL, {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                                body: JSON.stringify(payload),
+                                        mode: 'no-cors',
+                                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                        body: JSON.stringify(payload),
                             });
-                            let msg = 'PDF subido a Drive y registro guardado.';
-                            try {
-                                const data = await res.json();
-                                if (data && data.ok) {
-                                    if (data.fileUrl) msg = `PDF subido: ${data.fileUrl}`;
-                                    else if (data.result) msg = data.result;
-                                }
-                            } catch (_) { /* sin JSON legible */ }
-                            statusMsg.textContent = msg;
+                                    // En no-cors no se puede leer la respuesta; indicamos mensaje genérico
+                                    statusMsg.textContent = 'PDF enviado a Drive y registro solicitado (no se puede leer respuesta por CORS). Verifica en Drive y la hoja.';
                         } catch (err) {
                             console.error(err);
                             statusMsg.textContent = 'Error generando o subiendo el PDF.';
