@@ -135,6 +135,75 @@
             header.header, form#evaluacionForm { box-shadow: none; }
             .nivel { border: none; background: none; padding: 0; }
         }
+
+        /* ======================================= */
+        /* INICIO DE ESTILOS RESPONSIVOS PARA MÓVILES */
+        /* ======================================= */
+
+        @media (max-width: 768px) {
+            /* Ajustes generales para ganar espacio */
+            .container {
+                padding: 12px;
+            }
+            header.header {
+                padding: 16px;
+                text-align: center;
+            }
+            header.header h1 {
+                font-size: 1.4rem;
+            }
+
+            /* Hacemos que la información general pase a una sola columna */
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* SOLUCIÓN 1: Reorganizamos los niveles en una cuadrícula de 2x2 */
+            .niveles {
+                grid-template-columns: repeat(2, 1fr); 
+            }
+            
+            .nivel {
+                padding: 12px 8px;
+                text-align: center;
+            }
+
+            /* Apilamos el título y peso del criterio para que no se compriman */
+            .criterio-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+
+            /* SOLUCIÓN 2: Apilamos el resumen y los botones */
+            .resumen {
+                grid-template-columns: 1fr; /* Una sola columna */
+                gap: 16px;
+                text-align: center;
+            }
+
+            .btns {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                justify-content: center;
+                gap: 10px;
+            }
+            
+            /* Hacemos que los botones sean más grandes y fáciles de tocar */
+            button, .btn {
+                width: 100%;
+                padding: 12px 16px;
+            }
+
+            /* Hacemos que el botón "Reiniciar" y "Guardar JSON" ocupen todo el ancho si quedan solos */
+            #btnReiniciar { grid-column: 1 / -1; } /* Ocupa todas las columnas de la primera fila */
+            #btnGuardarJson { grid-column: 1 / -1; }
+            
+            /* Ajustamos los botones principales para que queden bien */
+            #btnDescargarPdf { grid-column: 1 / 2; }
+            #btnEnviarSheet { grid-column: 2 / 3; }
+        }
+
     </style>
 </head>
 <body>
@@ -180,7 +249,6 @@
                 <div class="btns">
                     <button type="button" class="btn-secondary" id="btnReiniciar">Reiniciar</button>
                     <button type="button" class="btn-secondary" id="btnGuardarJson">Guardar evaluación (JSON)</button>
-                    <!-- BOTÓN MODIFICADO -->
                     <button type="button" class="btn-primary" id="btnDescargarPdf">Descargar PDF</button>
                     <button type="button" class="btn-primary" id="btnEnviarSheet" title="Enviar registro a Google Sheets">Enviar a Google Sheets</button>
                 </div>
@@ -528,7 +596,6 @@
             URL.revokeObjectURL(url);
         }
 
-        // --- NUEVA FUNCIÓN PARA DESCARGAR PDF DIRECTAMENTE ---
         async function descargarPDF() {
             const btn = document.getElementById('btnDescargarPdf');
             btn.disabled = true;
@@ -549,7 +616,6 @@
                     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
 
-                // Esta línea genera el PDF y lo descarga automáticamente
                 await html2pdf().set(opt).from(element).save();
                 
                 statusMsg.textContent = 'PDF generado. La descarga debería comenzar en breve.';
@@ -557,12 +623,11 @@
                 console.error('Error al generar el PDF:', err);
                 statusMsg.textContent = 'Ocurrió un error al generar el PDF. Revisa la consola.';
             } finally {
-                btn.disabled = false; // Vuelve a habilitar el botón
+                btn.disabled = false;
             }
         }
 
-        // --- EVENTOS UI (SECCIÓN MODIFICADA) ---
-        document.getElementById('btnDescargarPdf').addEventListener('click', descargarPDF); // Modificado
+        document.getElementById('btnDescargarPdf').addEventListener('click', descargarPDF);
 
         document.getElementById('btnGuardarJson').addEventListener('click', () => {
             const out = construirSalida();
@@ -593,7 +658,6 @@
             document.getElementById('btnPdfDrive').addEventListener('click', generarYSubirPDF);
         })();
 
-        // Inicialización
         (function init(){
             setToday();
             loadTutor();
